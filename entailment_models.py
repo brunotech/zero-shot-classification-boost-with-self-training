@@ -30,17 +30,29 @@ def get_zero_shot_predictions(model_name, texts_to_infer, label_names, batch_siz
 
     ds = Dataset.from_dict({'text': texts_to_infer})
 
-    preds_list = []
-    for text, output in tqdm(zip(texts_to_infer, classifier(KeyDataset(ds, 'text'),
-                                                            batch_size=batch_size,
-                                                            candidate_labels=label_names, multi_label=True)),
-                             total=len(ds), desc="zero-shot inference"):
-        preds_list.append(output)
-
-    predictions = Predictions(predicted_labels=[x['labels'][0] for x in preds_list],
-                              ranked_classes=[x['labels'] for x in preds_list],
-                              class_name_to_score=[dict(zip(x['labels'], x['scores'])) for x in preds_list])
-    return predictions
+    preds_list = [
+        output
+        for text, output in tqdm(
+            zip(
+                texts_to_infer,
+                classifier(
+                    KeyDataset(ds, 'text'),
+                    batch_size=batch_size,
+                    candidate_labels=label_names,
+                    multi_label=True,
+                ),
+            ),
+            total=len(ds),
+            desc="zero-shot inference",
+        )
+    ]
+    return Predictions(
+        predicted_labels=[x['labels'][0] for x in preds_list],
+        ranked_classes=[x['labels'] for x in preds_list],
+        class_name_to_score=[
+            dict(zip(x['labels'], x['scores'])) for x in preds_list
+        ],
+    )
 
 
 def finetune_entailment_model(model_name, self_training_set: SelfTrainingSet, seed, learning_rate=2e-5, batch_size=32,

@@ -83,8 +83,12 @@ def load_ag_news_dbpedia_yahoo():
         logging.info(f'processing {dataset} csv files')
         raw_path = os.path.join(RAW_DIR, dataset, f'{dataset}_csv')
         with open(os.path.join(raw_path, 'classes.txt'), 'r') as f:
-            idx_to_class_name = dict(enumerate([get_label_name(dataset, row.strip())
-                                                for row in f.readlines()]))
+            idx_to_class_name = dict(
+                enumerate(
+                    get_label_name(dataset, row.strip())
+                    for row in f.readlines()
+                )
+            )
 
         dataset_out_dir = os.path.join(OUT_DIR, dataset)
         os.makedirs(dataset_out_dir, exist_ok=True)
@@ -105,7 +109,7 @@ def load_ag_news_dbpedia_yahoo():
             part_df['text'] = part_df['text'].apply(lambda x: clean_text(x))
             part_df['label'] = part_df['label'].apply(lambda x: idx_to_class_name[x - 1])
             if dataset_part == 'test':
-                part_df.to_csv(os.path.join(dataset_out_dir, f'test.csv'), index=False)
+                part_df.to_csv(os.path.join(dataset_out_dir, 'test.csv'), index=False)
 
                 with open(os.path.join(dataset_out_dir, 'class_names.txt'), 'w') as f:
                     f.writelines([class_name + '\n' for class_name in sorted(part_df["label"].unique())])
@@ -142,15 +146,28 @@ def load_imdb():
     raw_dir = os.path.join(RAW_DIR, 'imdb', 'aclImdb')
     train = []
     for label in ['pos', 'neg', 'unsup']:
-        for file in os.listdir(os.path.join(raw_dir, 'train', label)):
-            train.append({'text': open(os.path.join(raw_dir, 'train', label, file)).read().replace('<br />', ' '),
-                          'label': get_label_name(dataset_name, label) if label != 'unsup' else ''})
+        train.extend(
+            {
+                'text': open(os.path.join(raw_dir, 'train', label, file))
+                .read()
+                .replace('<br />', ' '),
+                'label': get_label_name(dataset_name, label)
+                if label != 'unsup'
+                else '',
+            }
+            for file in os.listdir(os.path.join(raw_dir, 'train', label))
+        )
     test = []
     for label in ['pos', 'neg']:
-        for file in os.listdir(os.path.join(raw_dir, 'test', label)):
-            test.append({'text': open(os.path.join(raw_dir, 'test', label, file)).read().replace('<br />', ' '),
-                         'label': get_label_name(dataset_name, label)})
-
+        test.extend(
+            {
+                'text': open(os.path.join(raw_dir, 'test', label, file))
+                .read()
+                .replace('<br />', ' '),
+                'label': get_label_name(dataset_name, label),
+            }
+            for file in os.listdir(os.path.join(raw_dir, 'test', label))
+        )
     unlabeled_df = pd.DataFrame(train)
     test_df = pd.DataFrame(test)
 
@@ -178,7 +195,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir, exist_ok=True)
         logging.info(f'downloading {dataset} raw files')
         extension = '.'.join(url.split(os.sep)[-1].split('.')[1:])
-        if len(extension) == 0:
+        if not extension:
             extension = 'tar.gz'
         target_file = os.path.join(out_dir, f'{dataset}.{extension}')
         urllib.request.urlretrieve(url, target_file)
